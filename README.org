@@ -1,0 +1,140 @@
+
+* Fermentator GUI
+
+** Description
+
+This interface is served by CouchDB to enable an easy to deploy system.
+
+** Packages
+
+ - CouchApp
+   To get it started
+
+ - D3 - Line graphs (pretty)
+   Star path (temperature graphing)
+
+** Document format
+
+- Configuration Data
+
+#+BEGIN_SRC javascript :tangle config.json
+  {
+      "type": "configuration",
+      "name": "Travis' Brewery",
+      "sensors": {
+          "1": {
+              "label": "Sensor One",
+              "hwaddr": "AB70FD013442"
+          },
+          "2": {
+              "label": "Sensor Two",
+              "hwaddr": "70ABFD013442"
+          },
+          "3": {
+              "label": "Sensor Three",
+              "hwaddr": "01AB70FD3442"
+          },
+          "4": {
+              "label": "Sensor Four",
+              "hwaddr": "42AB70FD0134"
+          },
+          "5": {
+              "label": "Sensor Five",
+              "hwaddr": "7A42AB70FD01"
+          }
+      },
+      "zones": {
+          "1": {
+              "label": "Zone 1",
+              "sensors": [1, 2],
+              "management": {
+                  "type": "fixed",
+                  "arguments": {
+                      "temperature": 65,
+                      "upper_bound": 66,
+                      "lower_bound": 62
+                  }
+              }
+          },
+          "2": {
+              "label": "Zone 2",
+              "sensors": [3, 4],
+              "management": {
+                  "type": "fixed",
+                  "arguments": {
+                      "temperature": 50,
+                      "upper_bound": 52,
+                      "lower_bound": 48
+                  }
+              }
+          },
+          "3": {
+              "label": "Zone 3",
+              "sensors": [5],
+              "management": {
+                  "type": "hysterisis",
+                  "arguments": {
+                      "temperature": 34,
+                      "upper_bound": 40,
+                      "lower_bound": 15
+                  }
+              }
+          }
+      }
+  }
+
+#+END_SRC
+
+- Sensor Data
+
+#+BEGIN_SRC javascript
+  {
+      "id": "<some id>",
+      "date": [YY, MM, DD, hh, mm, ss],
+      "value": 45
+  }
+#+END_SRC
+
+
+** Couch Views
+
+*** by_date
+
+    Allows querying for a range of sensor readings specified by a composite key of the form:
+
+    ["<sensor_id>",[YY,MM,DD,hh,mm,ss]]
+
+    Example curl request for sensor ~FridgeTemp~ between the dates of 2014-5-25 and 2014-7-1:
+
+    #+BEGIN_SRC sh
+      curl localhost:5984/fermentator/_design/gui/_view/by_date?startkey="\[\"FridgeTemp\",\[2014,5,25,0,0,0\]\]"\&endkey="\[\"FridgeTemp\",\[2014,7,1,0,0,0\]\]"
+    #+END_SRC
+
+
+
+** Deprecated
+
+- Zone list
+
+  Contains the list of `registered` zones.
+  These zones are defined
+
+#+BEGIN_SRC javascript
+  ["zone 1", "zone 2"]
+#+END_SRC
+
+- Zone Information
+
+#+BEGIN_SRC javascript
+  {
+      "name": "zone name",
+      "zone_id": "unique value",
+      "temperature": {
+          "set": value,
+          "current": value
+      },
+      "status": "[cooling | idle | heating]",
+      "algorithm": "[fixed | pid]"
+  }
+
+#+END_SRC
