@@ -3,15 +3,18 @@
 
 ** Description
 
-This interface is served by CouchDB to enable an easy to deploy system.
+   This interface is served by CouchDB to enable an easy to deploy system.
+   CouchDB externals is used to maintain an external process written in Python which queries
+   the 'fermware' instance once a minute to retrieve the current sensor values.
+   These values are then inserted into the CouchDB database for viewing purposes.
 
-** Packages
+** Setup
 
- - CouchApp
-   To get it started
+   Create user *fermware_writer* to allow the proxy to insert sensor values:
 
- - D3 - Line graphs (pretty)
-   Star path (temperature graphing)
+   #+BEGIN_SRC
+   curl -u 'admin:<password>' 192.168.0.9:5984/_users/org.couchdb.user:fermware_writer -X PUT --data-binary '{"_id": "org.couchdb.user:fermware_writer", "type":"user","name":"fermware_writer","roles":["writer"],"password":"<password>"}' -H "Content-Type:application/json" -i
+   #+END_SRC
 
 ** Document format
 
@@ -46,7 +49,7 @@ This interface is served by CouchDB to enable an easy to deploy system.
       "zones": {
           "1": {
               "label": "Zone 1",
-              "sensors": [1, 2],
+              "sensors": ["1", "2"],
               "management": {
                   "type": "fixed",
                   "arguments": {
@@ -58,7 +61,7 @@ This interface is served by CouchDB to enable an easy to deploy system.
           },
           "2": {
               "label": "Zone 2",
-              "sensors": [3, 4],
+              "sensors": ["3", "4"],
               "management": {
                   "type": "fixed",
                   "arguments": {
@@ -70,7 +73,7 @@ This interface is served by CouchDB to enable an easy to deploy system.
           },
           "3": {
               "label": "Zone 3",
-              "sensors": [5],
+              "sensors": ["5"],
               "management": {
                   "type": "hysterisis",
                   "arguments": {
@@ -87,11 +90,18 @@ This interface is served by CouchDB to enable an easy to deploy system.
 
 - Sensor Data
 
+  Sensor data is stored using the key format:
+
+#+BEGIN_SRC javascript
+  ["<sensor_id>", [YY, MM, DD, hh, mm, ss]]
+#+END_SRC
+
+   The values stored are:
+
 #+BEGIN_SRC javascript
   {
-      "id": "<some id>",
-      "date": [YY, MM, DD, hh, mm, ss],
-      "value": 45
+      "F": 45,
+      "C": 7.22
   }
 #+END_SRC
 
@@ -109,32 +119,3 @@ This interface is served by CouchDB to enable an easy to deploy system.
     #+BEGIN_SRC sh
       curl localhost:5984/fermentator/_design/gui/_view/by_date?startkey="\[\"FridgeTemp\",\[2014,5,25,0,0,0\]\]"\&endkey="\[\"FridgeTemp\",\[2014,7,1,0,0,0\]\]"
     #+END_SRC
-
-
-
-** Deprecated
-
-- Zone list
-
-  Contains the list of `registered` zones.
-  These zones are defined
-
-#+BEGIN_SRC javascript
-  ["zone 1", "zone 2"]
-#+END_SRC
-
-- Zone Information
-
-#+BEGIN_SRC javascript
-  {
-      "name": "zone name",
-      "zone_id": "unique value",
-      "temperature": {
-          "set": value,
-          "current": value
-      },
-      "status": "[cooling | idle | heating]",
-      "algorithm": "[fixed | pid]"
-  }
-
-#+END_SRC
