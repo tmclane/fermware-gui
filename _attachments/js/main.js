@@ -74,59 +74,84 @@ var Application = function(db_name) {
                     .append("g")
                     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-                var now = Date();
-                var previous = new Date(new Date().getTime() - (12 * 60 * 60 * 1000));
-                var qs = "?startkey=[\"Bottom\",[" + previous.getFullYear() + "," +
-                    (previous.getMonth() + 1) + "," + previous.getDate() + "," +
-                    previous.getHours() + "]]&endkey=[\"Bottom\",{}]";
+                var query_string = function(sensor_id) {
+                    var previous = new Date(new Date().getTime() - (8 * 60 * 60 * 1000));
+                    return "?startkey=[\"" + sensor_id + "\",[" + previous.getFullYear() + "," +
+                        (previous.getMonth() + 1) + "," + previous.getDate() + "," +
+                        previous.getHours() + "]]&endkey=[\"" + sensor_id + "\",{}]";
+                }
 
-                d3.json("_view/by_date" + qs,
-                        function(viewdata) {
-                            data = viewdata["rows"];
-                            var count = 0;
+                var fetch_sensor_values = function(sensor_id, callback) {
+                    d3.json("_view/by_date" + query_string(sensor_id),
+                            function(viewdata) {
+                                data = viewdata["rows"];
 
-                            data.forEach(function(d) {
-                                d.date = parseDate.apply(null, d.value.date);
-                                d.date.setMonth(d.date.getMonth() - 1);
-                                d.temperature = +d.value.F;
-                                count += 1;
+                                var sensor_data = new Object();
+
+                                var count = 0;
+                                var values = [];
+
+                                data.forEach(function(d) {
+                                    d.date = parseDate.apply(null, d.value.date);
+                                    d.date.setMonth(d.date.getMonth() - 1);
+                                    d.temperature = +d.value.F;
+                                    count += 1;
+
+                                    values.push(d);
+                                });
+
+                                sensor_data.name = sensor_id;
+                                sensor_data.values = values;
+                                sensor_data.count = count;
+
+                                callback( sensor_data );
                             });
+                }
 
-                            console.log("Processed " + count + " items");
+                var render_graph = function(glycol_data, bottom_data) {
+                    var data = glycol_data.values
+                    var xmin = d3.min(data.map(function(d) { return d.date;}));
+                    var xmax = d3.max(data.map(function(d) { return d.date;}));
+                    var ymin = d3.min(data.map(function(d) { return d.temperature; }));
+                    var ymax = d3.max(data.map(function(d) { return d.temperature; }));
 
-                            var xmin = d3.min(data.map(function(d) { return d.date;}));
-                            var xmax = d3.max(data.map(function(d) { return d.date;}));
-                            var ymin = d3.min(data.map(function(d) { return d.temperature; }));
-                            var ymax = d3.max(data.map(function(d) { return d.temperature; }));
+                    x.domain([xmin, xmax]);
+                    y.domain([ymin, ymax]);
 
-                            console.log("XMIN: " + xmin);
-                            console.log("XMAX: " + xmax);
-                            x.domain([xmin, xmax]);
-                            y.domain([ymin, ymax]);
+                    //x.domain(d3.extent(data, function(d) { return d.date; }));
+                    //y.domain(d3.extent(data, function(d) { return d.value; }));
 
-                            //x.domain(d3.extent(data, function(d) { return d.date; }));
-                            //y.domain(d3.extent(data, function(d) { return d.value; }));
+                    svg.append("g")
+                        .attr("class", "x axis")
+                        .attr("transform", "translate(0," + height + ")")
+                        .call(xAxis);
 
-                            svg.append("g")
-                                .attr("class", "x axis")
-                                .attr("transform", "translate(0," + height + ")")
-                                .call(xAxis);
+                    svg.append("g")
+                        .attr("class", "y axis")
+                        .call(yAxis)
+                        .append("text")
+                        .attr("transform", "rotate(-90)")
+                        .attr("y", 6)
+                        .attr("dy", ".71em")
+                        .style("text-anchor", "end")
+                        .text("Temperature (F)");
 
-                            svg.append("g")
-                                .attr("class", "y axis")
-                                .call(yAxis)
-                                .append("text")
-                                .attr("transform", "rotate(-90)")
-                                .attr("y", 6)
-                                .attr("dy", ".71em")
-                                .style("text-anchor", "end")
-                                .text("Temperature (F)");
+                    svg.append("path")
+                        .datum(data)
+                        .attr("class", "line")
+                        .attr("d", line);
 
-                            svg.append("path")
-                                .datum(data)
-                                .attr("class", "line")
-                                .attr("d", line);
-                        });
+                }
+
+                fetch_sensor_values("Glycol",
+                                    function(glycol_data) {
+                                        fetch_sensor_values("Bottom",
+                                                            function(bottom_data) {
+                                                                console.log(glycol_data);
+                                                                console.log(bottom_data);
+                                                                render_graph(glycol_data);
+                                                            });
+                                        });
 
                 that.graph = svg;
             }
