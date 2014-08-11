@@ -37,12 +37,16 @@ var Application = function(db_name) {
             var that = this;
             if (!that.graph)
             {
-                var margin = {top: 10, right: 30, bottom: 50, left: 30};
-                var width = window.outerWidth - margin.left - margin.right;
-                var height = 400 - margin.top - margin.bottom;
+                var margin = {top: 10, right: 10, bottom: 20, left: 30};
+                var width = $(graph_id).width() - margin.left - margin.right;
+                var height = $(graph_id).height() - margin.top - margin.bottom;
 
                 var parseDate = function(Y,M,D,h,m,s) {
                     return new Date(Y, M, D, h, m, s);
+                };
+
+                var convertToArray = function(d) {
+
                 };
 
                 var x = d3.time.scale()
@@ -70,26 +74,35 @@ var Application = function(db_name) {
                     .append("g")
                     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
-                d3.json("_view/by_date?startkey=[\"FridgeTemp\",[]]&endkey=[\"FridgeTemp\",{}]",
+                var now = Date();
+                var previous = new Date(new Date().getTime() - (12 * 60 * 60 * 1000));
+                var qs = "?startkey=[\"Bottom\",[" + previous.getFullYear() + "," +
+                    (previous.getMonth() + 1) + "," + previous.getDate() + "," +
+                    previous.getHours() + "]]&endkey=[\"Bottom\",{}]";
+
+                d3.json("_view/by_date" + qs,
                         function(viewdata) {
                             data = viewdata["rows"];
                             var count = 0;
 
                             data.forEach(function(d) {
                                 d.date = parseDate.apply(null, d.value.date);
-                                d.temperature = +d.value.value;
+                                d.date.setMonth(d.date.getMonth() - 1);
+                                d.temperature = +d.value.F;
                                 count += 1;
                             });
 
-                            var xmin = d3.min(data.map(function(d) { return d.date;})) - 10;
-                            var xmax = d3.max(data.map(function(d) { return d.date;})) + 10;
+                            console.log("Processed " + count + " items");
+
+                            var xmin = d3.min(data.map(function(d) { return d.date;}));
+                            var xmax = d3.max(data.map(function(d) { return d.date;}));
                             var ymin = d3.min(data.map(function(d) { return d.temperature; }));
-                            var ymax = d3.min(data.map(function(d) { return d.temperature; }));
+                            var ymax = d3.max(data.map(function(d) { return d.temperature; }));
 
-                            x.domain([d3.min(data.map(function(d) { return d.date;})),
-                                      d3.max(data.map(function(d) { return d.date;}))]);
-
-                            y.domain([ymin, ymax + 20]);
+                            console.log("XMIN: " + xmin);
+                            console.log("XMAX: " + xmax);
+                            x.domain([xmin, xmax]);
+                            y.domain([ymin, ymax]);
 
                             //x.domain(d3.extent(data, function(d) { return d.date; }));
                             //y.domain(d3.extent(data, function(d) { return d.value; }));
@@ -117,8 +130,13 @@ var Application = function(db_name) {
 
                 that.graph = svg;
             }
+        },
+
+        switch_tab: function(from_tab, to_tab) {
+            console.log(from_tab + " -> " + to_tab);
         }
     }
 };
 
-Fermware = new Application("fermentator");
+
+var application = new Application("fermentator");

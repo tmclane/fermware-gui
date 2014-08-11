@@ -3,5 +3,7 @@ function(doc) {
         emit([doc.sensor_id, doc.date],
              {"sensor_id": doc.sensor_id,
 	      "date": doc.date,
-              "value": doc.value});
+              "C": doc.C,
+              "F": doc.F}
+            );
 }
