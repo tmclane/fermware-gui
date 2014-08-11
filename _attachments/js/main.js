@@ -37,7 +37,7 @@ var Application = function(db_name) {
             var that = this;
             if (!that.graph)
             {
-                var margin = {top: 10, right: 10, bottom: 20, left: 30};
+                var margin = {top: 10, right: 40, bottom: 20, left: 30};
                 var width = $(graph_id).width() - margin.left - margin.right;
                 var height = $(graph_id).height() - margin.top - margin.bottom;
 
@@ -108,18 +108,18 @@ var Application = function(db_name) {
                             });
                 }
 
-                var render_graph = function(glycol_data, bottom_data) {
-                    var data = glycol_data.values
-                    var xmin = d3.min(data.map(function(d) { return d.date;}));
-                    var xmax = d3.max(data.map(function(d) { return d.date;}));
-                    var ymin = d3.min(data.map(function(d) { return d.temperature; }));
-                    var ymax = d3.max(data.map(function(d) { return d.temperature; }));
+                var render_graph = function(sensors) {
+                    console.log(sensors);
 
-                    x.domain([xmin, xmax]);
-                    y.domain([ymin, ymax]);
+                    var data = sensors[0].values;
 
-                    //x.domain(d3.extent(data, function(d) { return d.date; }));
-                    //y.domain(d3.extent(data, function(d) { return d.value; }));
+                    x.domain(d3.extent(sensors[0].values, function(d) { return d.date; }));
+                    y.domain([
+                        d3.min(sensors, function(c) { return d3.min(c.values, function(v) { return v.temperature; }); }),
+                        d3.max(sensors, function(c) { return d3.max(c.values, function(v) { return v.temperature; }); })
+                    ]);
+
+
 
                     svg.append("g")
                         .attr("class", "x axis")
@@ -141,6 +141,25 @@ var Application = function(db_name) {
                         .attr("class", "line")
                         .attr("d", line);
 
+
+                    var lines = svg.selectAll(".sensors")
+                        .data(sensors)
+                        .enter().append("g")
+                        .attr("class", "sensor");
+
+                    lines.append("path")
+                        .attr("class", "line")
+                        .attr("d", function(d) { return line(d.values); })
+                        .style("stroke-width", "4px");
+//                        .style("stroke", function(d) { return color(d.name); });
+
+                    lines.append("text")
+                        .datum(function(d) { return {name: d.name, value: d.values[d.values.length - 1]}; })
+                        .attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.temperature) + ")"; })
+                        .attr("x", 3)
+                        .attr("dy", ".35em")
+                        .text(function(d) { return d.name; });
+
                 }
 
                 fetch_sensor_values("Glycol",
@@ -149,7 +168,7 @@ var Application = function(db_name) {
                                                             function(bottom_data) {
                                                                 console.log(glycol_data);
                                                                 console.log(bottom_data);
-                                                                render_graph(glycol_data);
+                                                                render_graph([glycol_data, bottom_data]);
                                                             });
                                         });
 
