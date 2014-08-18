@@ -2,6 +2,7 @@
 This script is automatically started and managed by CouchDB itself.
 
 '''
+from base64 import b64encode
 from urlparse import (
     parse_qs,
     urlparse
@@ -105,7 +106,7 @@ class Handler(SimpleHTTPServer.SimpleHTTPRequestHandler):
         data = self.server.connection.send_receive(data)
         self.send_response(200)
         self.end_headers()
-        self.wfile.write("Command submitted: " + data)
+        self.wfile.write(data)
 
 
 class FermwareProxy(BaseHTTPServer.HTTPServer):
@@ -130,7 +131,11 @@ def poller(tty, sleeptime=60):
     # TODO: Fetch configuration data from CouchDB
 
     import httplib
-    conn = httplib.HTTPConnection('www.cwi.nl')
+
+    conn = httplib.HTTPConnection('localhost', 5984)
+    conn.request('GET', '/%s/config' % DB_NAME,
+                 headers={'Authorization': 'Basic %s' % b64encode('fermware_writer:fermware2303')})
+
 
     while _running:
         print("Polling sensor data")
@@ -146,12 +151,21 @@ def poller(tty, sleeptime=60):
 
         data = json.loads(tty.send_receive('list_sensors'))
         for sensor in data:
+            if len(sensor) == 1 or sensor['C'] == sensor['F']:
+                continue
+
             sdata = sensor.copy()
             sdata['date'] = now
             sdata['type'] = "sensor_value"
             sdata['sensor_id'] = sensor_map.get(sensor['address'], sensor['address'])
-
-
+            sdata['C'] = round(sdata['C'], 2)
+            sdata['F'] = round(sdata['F'], 2)
+            conn = httplib.HTTPConnection('localhost', 5984)
+            conn.request('POST',
+                         '/%s' % DB_NAME,
+                         json.dumps(sdata),
+                         {'Content-Type': 'application/json',
+                          'Authorization': 'Basic %s' % b64encode('fermware_writer:fermware2303')})
 
 
 def main():
@@ -161,7 +175,7 @@ def main():
     tty.connect()
 
     httpd = FermwareProxy('0.0.0.0', 7999, tty)
-    polling_thread = threading.Thread(target=poller, args=[tty, 1])
+    polling_thread = threading.Thread(target=poller, args=[tty, 60])
     polling_thread.start()
 
     while _running:
