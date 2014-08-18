@@ -37,12 +37,12 @@ var Application = function(db_name) {
             var that = this;
             if (!that.graph)
             {
-                var margin = {top: 10, right: 40, bottom: 20, left: 30};
+                var margin = {top: 10, right: 60, bottom: 20, left: 40};
                 var width = $(graph_id).width() - margin.left - margin.right;
                 var height = $(graph_id).height() - margin.top - margin.bottom;
 
-                var parseDate = function(Y,M,D,h,m,s) {
-                    return new Date(Y, M, D, h, m, s);
+                var parseDate = function(Y,M,D,h,m,s, ms) {
+                    return new Date(Y, M - 1, D, h, m, s);
                 };
 
                 var convertToArray = function(d) {
@@ -75,10 +75,11 @@ var Application = function(db_name) {
                     .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
 
                 var query_string = function(sensor_id) {
-                    var previous = new Date(new Date().getTime() - (8 * 60 * 60 * 1000));
+                    var previous = new Date(new Date().getTime() - (4 * 60 * 60 * 1000));
                     return "?startkey=[\"" + sensor_id + "\",[" + previous.getFullYear() + "," +
                         (previous.getMonth() + 1) + "," + previous.getDate() + "," +
                         previous.getHours() + "]]&endkey=[\"" + sensor_id + "\",{}]";
+
                 }
 
                 var fetch_sensor_values = function(sensor_id, callback) {
@@ -92,8 +93,7 @@ var Application = function(db_name) {
                                 var values = [];
 
                                 data.forEach(function(d) {
-                                    d.date = parseDate.apply(null, d.value.date);
-                                    d.date.setMonth(d.date.getMonth() - 1);
+                                    d.date = parseDate.apply(null, d.key[1]);
                                     d.temperature = +d.value.F;
                                     count += 1;
 
@@ -119,7 +119,7 @@ var Application = function(db_name) {
                         d3.max(sensors, function(c) { return d3.max(c.values, function(v) { return v.temperature; }); })
                     ]);
 
-
+                    var color = d3.scale.category10();
 
                     svg.append("g")
                         .attr("class", "x axis")
@@ -131,7 +131,7 @@ var Application = function(db_name) {
                         .call(yAxis)
                         .append("text")
                         .attr("transform", "rotate(-90)")
-                        .attr("y", 6)
+                        .attr("y", -35)
                         .attr("dy", ".71em")
                         .style("text-anchor", "end")
                         .text("Temperature (F)");
@@ -150,13 +150,33 @@ var Application = function(db_name) {
                     lines.append("path")
                         .attr("class", "line")
                         .attr("d", function(d) { return line(d.values); })
-                        .style("stroke-width", "4px");
-//                        .style("stroke", function(d) { return color(d.name); });
+                        .style("stroke-width", "3px")
+                        .style("stroke", function(d) { return d.color = color(d.name); })
 
                     lines.append("text")
-                        .datum(function(d) { return {name: d.name, value: d.values[d.values.length - 1]}; })
+                        .datum(function(d) { return {name: d.name,
+                                                     value: d.values[d.values.length - 1]};
+                                           })
                         .attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.temperature) + ")"; })
                         .attr("x", 3)
+                        .attr("dy", ".35em")
+                        .text(function(d) { return d.name; });
+
+                    lines.append("text")
+                        .datum(function(d) { return {name: d.values[d.values.length - 1].temperature + "(F)",
+                                                     value: d.values[d.values.length - 1]}; })
+                        .attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.temperature) + ")"; })
+                        .attr("x", 3)
+                        .attr("y", 10)
+                        .attr("dy", ".35em")
+                        .text(function(d) { return d.name; });
+
+                    lines.append("text")
+                        .datum(function(d) { return {name: d.values[d.values.length - 1].temperature + "(F)",
+                                                     value: d.values[d.values.length - 1]}; })
+                        .attr("transform", function(d) { return "translate(" + x(d.value.date) + "," + y(d.value.temperature) + ")"; })
+                        .attr("x", 3)
+                        .attr("y", 10)
                         .attr("dy", ".35em")
                         .text(function(d) { return d.name; });
 
@@ -178,6 +198,7 @@ var Application = function(db_name) {
 
         switch_tab: function(from_tab, to_tab) {
             console.log(from_tab + " -> " + to_tab);
+
         }
     }
 };
