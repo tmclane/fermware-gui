@@ -1,30 +1,53 @@
-var Application = function(db_name) {
+var Configuration = function(db_name) {
+    var that = this;
     var config = null;
     var db = $.couch.db(db_name);
-    var graph = null;
+
+    var load = function (callback, reload) {
+        if (!that.config || reload)
+        {
+            db.openDoc("config", {
+                success: function (d) {
+                    that.config = d;
+                    callback(d);
+                },
+                error: function () {
+                    alert ("Failed to locate the configuration");
+                }
+            });
+        }
+        else {
+            callback(that.config);
+        }
+        return this;
+    };
 
     return {
-        configuration: function(callback){
-            var that = this;
-            if (!that.config)
-            {
-                db.openDoc("config", {
-                    success: function (d) {
-                        that.config = d;
-                        callback(that.config.name);
-                    },
-                    error: function () {
-                        alert ("Failed to locate the configuration");
-                    }
+        load: load,
+        get: function(key, callback){
+            if (callback) {
+                load(function(cfg) {
+                    callback(cfg.hasOwnProperty(key) ? cfg[key] : undefined);
                 });
             }
             else {
-                callback(that.config);
+                return that.config.hasOwnProperty(key) ? that.config[key] : undefined;
             }
-        },
+        }
+    }
+};
+
+
+var Application = function(db_name) {
+    var config = new Configuration(db_name).load(function(c){});
+
+    var graph = null;
+
+    return {
+        config: config,
 
         brewery_name: function(callback){
-            this.configuration(callback);
+            config.get('name', callback);
         },
 
         zones: function(callback){
