@@ -64,20 +64,15 @@
         document.title = name;
       });
 
-//      application.show_overview("#well-main");
       application.draw_graph("#well-main");  // Initialize and show overview
-      application.zones(function(zones){console.log(zones)});
-
-      var g = new ZoneGraph({containerId: '#well-main',
-                             zoneId: 'Testing'});
-      console.log(g);
     </script>
 
     <script type="text/javascript">
-      $('a[data-toggle="tab"]').on('show.bs.tab', function (e) {
+      $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
         application.switch_tab(e.relatedTarget.hash,  e.target.hash);
       });
 
+      /*
       $(function() {
         $(".btn").click(function(e){
           console.log("Pushed " + e.target.innerHTML);
@@ -87,6 +82,7 @@
           });
         });
       });
+      */
     </script>
   </body>
 </html>
